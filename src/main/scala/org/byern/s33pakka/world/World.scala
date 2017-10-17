@@ -2,10 +2,12 @@ package org.byern.s33pakka.world
 
 import akka.actor.{ActorLogging, Props}
 import akka.persistence.PersistentActor
-import org.byern.s33pakka.core.Persistable
-import org.byern.s33pakka.world.GameLevel._
+import org.byern.s33pakka.core.{Message, Persistable}
+import org.byern.s33pakka.world.World._
 
-object GameLevel {
+object World {
+
+  trait WorldMsg extends Message
 
   case class Creature(sign: String, id: String)
 
@@ -13,17 +15,17 @@ object GameLevel {
 
   case class CreaturePos(creature: Creature, position: Position)
 
-  case class AddThing(creature: Creature, position: Option[Position] = Option.empty)
+  case class AddThing(creature: Creature, position: Option[Position] = Option.empty) extends WorldMsg
 
   case class ThingAdded(creaturePos: CreaturePos) extends Persistable
 
-  case class MoveThing(id: String, direction: Direction)
+  case class MoveThing(id: String, direction: Direction) extends WorldMsg
 
   case class CantMove(id: String, direction: Direction)
 
   case class PositionChanged(id: String, position: Position) extends Persistable
 
-  case class GetState()
+  case class GetState() extends WorldMsg
 
   case class State(map: Array[Array[String]], creatures: List[CreaturePos])
 
@@ -47,10 +49,10 @@ object GameLevel {
     override def move(position: Position): Position = Position(position.x, position.y - 1)
   }
 
-  def props(): Props = Props(new GameLevel())
+  def props(): Props = Props(new World())
 }
 
-class GameLevel extends PersistentActor with ActorLogging {
+class World extends PersistentActor with ActorLogging {
 
   private val MAX_WIDTH = 20
   private val MAX_HEIGHT = 20

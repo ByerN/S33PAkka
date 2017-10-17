@@ -1,13 +1,12 @@
 package org.byern.s33pakka
 
 import akka.actor.{ActorRef, ActorSystem, Props}
-import akka.cluster.ddata.Replicator.NotFound
 import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings}
 import akka.persistence.journal.leveldb.SharedLeveldbStore
 import akka.testkit.{ImplicitSender, TestKit}
 import org.byern.s33pakka.config.{ShardMessageConfiguration, SharedStoreUsage}
 import org.byern.s33pakka.player.Player._
-import org.byern.s33pakka.player.PlayerSupervisor.{AlreadyRegistered, Login, NotExists, Register}
+import org.byern.s33pakka.player.PlayerSupervisor.{AlreadyRegistered, NotExists}
 import org.byern.s33pakka.player.{Player, PlayerSupervisor}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 
@@ -35,9 +34,9 @@ class PlayerTest() extends TestKit(ActorSystem("system")) with ImplicitSender
   "PlayerSupervisor actor" must {
     "send back not found if player is not registered" in {
       val playerSupervisor = system.actorOf(PlayerSupervisor.props(playerProxy))
-      playerSupervisor ! Register("a1", "b", "c")
-      expectMsg(Initialized("a1", "c"))
-      playerSupervisor ! Register("a1", "b", "c")
+      playerSupervisor ! Player.Register("a1", "b", "c")
+      expectMsg(Player.Registered("a1", "c"))
+      playerSupervisor ! Player.Register("a1", "b", "c")
       expectMsg(AlreadyRegistered("a1"))
     }
   }
@@ -54,17 +53,17 @@ class PlayerTest() extends TestKit(ActorSystem("system")) with ImplicitSender
     "login at registered account" in {
       val playerSupervisor = system.actorOf(PlayerSupervisor.props(playerProxy))
       playerSupervisor ! Register("a2", "b", "c")
-      expectMsg(Initialized("a2", "c"))
+      expectMsg(Player.Registered("a2", "c"))
       playerSupervisor ! Login("a2", "b")
-      expectMsg(CorrectPassword("c"))
+      expectMsg(CorrectPassword("a2", "c"))
     }
   }
 
   "Player actor" must {
     "send back Initialized if it's initialized" in {
       val player = system.actorOf(Player.props())
-      player ! Init("a3", "b", "c")
-      expectMsg(Initialized("a3", "c"))
+      player ! Player.Register("a3", "b", "c")
+      expectMsg(Player.Registered("a3", "c"))
     }
 
   }
@@ -74,19 +73,19 @@ class PlayerTest() extends TestKit(ActorSystem("system")) with ImplicitSender
       val player = system.actorOf(Player.props())
       player ! Login("a4", "b")
       expectMsg(NotInitialized())
-      player ! Init("a4", "b", "c")
-      expectMsg(Initialized("a4", "c"))
-      expectMsg(CorrectPassword("c"))
+      player ! Player.Register("a4", "b", "c")
+      expectMsg(Player.Registered("a4", "c"))
+      expectMsg(CorrectPassword("a4", "c"))
     }
   }
 
   "Player actor" must {
     "not pass if password is incorrect" in {
       val player = system.actorOf(Player.props())
-      player ! Init("a5", "b", "c")
-      expectMsg(Initialized("a5", "c"))
-      player ! Login("a5", "incorrect password")
-      expectMsg(IncorrectPassword())
+      player ! Player.Register("a5", "b", "c")
+      expectMsg(Player.Registered("a5", "c"))
+      player ! Player.Login("a5", "incorrect password")
+      expectMsg(IncorrectPassword("a5"))
     }
   }
 }

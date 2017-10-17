@@ -2,23 +2,26 @@ package org.byern.s33pakka.player
 
 import akka.actor.{ActorLogging, Props}
 import akka.persistence.PersistentActor
-import org.byern.s33pakka.core.{BaseShardMessage, Persistable}
+import org.byern.s33pakka.core.{Message, Persistable, ShardMessage}
 import org.byern.s33pakka.player.Player._
-import org.byern.s33pakka.player.PlayerSupervisor.Login
 
 object Player {
 
-  val entityIdPrefix = "player"
+  val PREFIX = "player"
 
-  case class Init(login: String, password: String, sign: String) extends BaseShardMessage(entityIdPrefix + "_" + login)
+  trait PlayerMsg extends Message
 
-  case class Initialized(login: String, sign: String)
+  case class Register(login: String, password: String, sign: String) extends ShardMessage(PREFIX + "_" + login) with PlayerMsg
+
+  case class Registered(login: String, sign: String)
 
   case class NotInitialized()
 
-  case class IncorrectPassword()
+  case class Login(login: String, password: String) extends ShardMessage(PREFIX + "_" + login) with PlayerMsg
 
-  case class CorrectPassword(sign: String)
+  case class IncorrectPassword(login: String)
+
+  case class CorrectPassword(login: String, sign: String)
 
   case class InitializedEvent(login: String, password: String, sign: String) extends Persistable
 
@@ -38,36 +41,35 @@ class Player extends PersistentActor with ActorLogging {
       updateState(evt)
   }
 
-  def notInitializedReceive: Receive = {
-    case Init(login: String, password: String, sign: String) =>
+  def notInitialized: Receive = {
+    case Register(login: String, password: String, sign: String) =>
       persist(InitializedEvent(login, password, sign)) { event =>
         updateState(event)
       }
-      sender() ! Initialized(login, sign)
-      context.become(initializedReceive)
+      sender() ! Registered(login, sign)
       unstashAll()
     case _ =>
       sender() ! NotInitialized()
       stash()
   }
 
-  def initializedReceive: Receive = {
+  def initialized: Receive = {
     case Login(_, password: String) =>
       if (this.password == password)
-        sender() ! CorrectPassword(sign)
+        sender() ! CorrectPassword(login, sign)
       else
-        sender() ! IncorrectPassword()
+        sender() ! IncorrectPassword(login)
     case msg@_ =>
       log.info("Unknown message " + msg)
   }
 
-  override def receiveCommand = notInitializedReceive
+  override def receiveCommand = notInitialized
 
   def updateState(event: Persistable): Unit = event match {
     case InitializedEvent(login: String, password: String, sign: String) =>
       this.login = login
       this.password = password
       this.sign = sign
-      context.become(initializedReceive)
+      context become initialized
   }
 }
