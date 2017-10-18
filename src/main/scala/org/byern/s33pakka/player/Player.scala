@@ -5,7 +5,7 @@ import akka.persistence.PersistentActor
 import com.fasterxml.jackson.annotation.JsonProperty
 import org.byern.s33pakka.core.{Message, Persistable, ShardMessage}
 import org.byern.s33pakka.dto.ClientMessage
-import org.byern.s33pakka.player.Player._
+import org.byern.s33pakka.player.Player.{PREFIX, _}
 
 object Player {
 
@@ -19,7 +19,8 @@ object Player {
                        @JsonProperty("password")
                        password: String,
                        @JsonProperty("sign")
-                       sign: String) extends ShardMessage(PREFIX + "_" + login)
+                       sign: String,
+                       entityId:String) extends ShardMessage()
     with PlayerMsg with ClientMessage
 
   case class Registered(login: String, sign: String)
@@ -34,7 +35,8 @@ object Player {
                     @JsonProperty("login")
                     login: String,
                     @JsonProperty("password")
-                    password: String) extends ShardMessage(PREFIX + "_" + login)
+                    password: String,
+                    entityId:String) extends ShardMessage
     with PlayerMsg with ClientMessage
 
   case class IncorrectPassword(login: String)
@@ -60,7 +62,7 @@ class Player extends PersistentActor with ActorLogging {
   }
 
   def notInitialized: Receive = {
-    case Register(login: String, password: String, sign: String) =>
+    case Register(login: String, password: String, sign: String, _) =>
       persist(InitializedEvent(login, password, sign)) { event =>
         updateState(event)
       }
@@ -72,7 +74,7 @@ class Player extends PersistentActor with ActorLogging {
   }
 
   def initialized: Receive = {
-    case Login(_, password: String) =>
+    case Login(_, password: String, _) =>
       if (this.password == password)
         sender() ! CorrectPassword(login, sign)
       else

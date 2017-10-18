@@ -1,7 +1,8 @@
-package org.byern.s33pakka
+package org.byern.s33pakka.session
+
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import org.byern.s33pakka.ConnectedUser.Connected
 import org.byern.s33pakka.dto.{ClientMessage, ClientResponse}
+import org.byern.s33pakka.session.ConnectedUser.Connected
 
 class ConnectedUser(sessionManager: ActorRef) extends Actor with ActorLogging {
   override def receive: Receive = waiting

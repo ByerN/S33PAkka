@@ -7,13 +7,21 @@
 </head>
 <body>
 
-<textarea id="login"></textarea>
-<textarea id="password"></textarea>
-<textarea id="sign"></textarea>
+<textarea id="login"></textarea>login
+<br>
 
+<textarea id="password"></textarea>password
+<br>
+
+<textarea id="sign"></textarea>sign
+<br>
+
+<br>
 <button id="registerButton">Register</button>
+
 <button id="loginButton">Login</button>
 
+<br>
 <button id="moveLeftButton">Left</button>
 <button id="moveRightButton">Right</button>
 <button id="moveUpButton">Up</button>
@@ -24,7 +32,7 @@
 
 
 <script language="javascript">
-var sessionId = "";
+var sessionId = null;
 var map;
 var creatures;
             var $messages =$("#messages"),
@@ -40,12 +48,17 @@ var creatures;
 $moveLeftButton = $("#moveLeftButton"),
 $moveRightButton = $("#moveRightButton"),
 $moveUpButton = $("#moveUpButton"),
-$moveDownButton = $("#moveDownButton"),
+$moveDownButton = $("#moveDownButton")
 
-                connection = new WebSocket('ws://test:1234@localhost:8080/example')
+function start(){
+               var connection = new WebSocket('ws://test:1234@localhost:8181/example')
 
             connection.onopen = function () {
+                if(sessionId!= null) {
+                    getState()
+                }
                 $messages.prepend($("<li>Connected</li>"))
+                $registerButton.unbind('click');
                 $registerButton.on('click', function() {
                     var loginText = $login.val()
                     var passwordfText = $login.val()
@@ -60,6 +73,7 @@ $moveDownButton = $("#moveDownButton"),
                         )
                     )
                 })
+                 $loginButton.unbind('click');
                  $loginButton.on('click', function() {
                     var loginText = $login.val()
                     var passwordText = $login.val()
@@ -73,9 +87,24 @@ $moveDownButton = $("#moveDownButton"),
                     )
                 })
 
+$(document).keypress(function(e) {
+  if(e.which == 119) {
+    move("UP")
+  } else if(e.which == 115) {
+    move("DOWN")
+  } else if(e.which == 100) {
+    move("RIGHT")
+  } else if(e.which == 97) {
+    move("LEFT")
+  }
+});
+                $moveLeftButton.unbind('click');
                 $moveLeftButton.on('click', function() {move("LEFT")})
+                $moveRightButton.unbind('click');
                 $moveRightButton.on('click', function() {move("RIGHT")})
+                $moveUpButton.unbind('click');
                 $moveUpButton.on('click', function() {move("UP")})
+                $moveDownButton.unbind('click');
                 $moveDownButton.on('click', function() {move("DOWN")})
             }
             connection.onerror = function (error) { console.log('WebSocket Error ', error) }
@@ -111,6 +140,13 @@ $moveDownButton = $("#moveDownButton"),
                     $gameMap.text(mapText)
                 }
             }
+            connection.onclose = function(){
+                console.log("closed")
+                setTimeout(function(){
+                start()
+
+                }, 5000);
+            }
 
 
             function getState(){
@@ -139,7 +175,8 @@ function move(direction) {
                     )
                      getState()
 }
-
+}
+start()
 </script>
 </body>
 </html>

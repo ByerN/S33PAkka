@@ -1,14 +1,14 @@
-package org.byern.s33pakka
+package org.byern.s33pakka.session
 
 import java.util.UUID
 
 import akka.actor.{ActorRef, Props}
 import akka.persistence.PersistentActor
 import com.fasterxml.jackson.annotation.JsonProperty
-import org.byern.s33pakka.SessionManager._
 import org.byern.s33pakka.core.Persistable
 import org.byern.s33pakka.dto.{ClientMessage, ClientResponse}
 import org.byern.s33pakka.player.Player._
+import org.byern.s33pakka.session.SessionManager._
 import org.byern.s33pakka.world.World
 import org.byern.s33pakka.world.World.{Creature, GetState, MoveThing}
 
@@ -23,7 +23,7 @@ object SessionManager {
                              @JsonProperty("msg")
                              msg: ClientMessage) extends ClientMessage
 
-  case class SessionCreated(sessionId: UUID) extends ClientResponse("SESSION_CREATED")
+  case class SessionCreated(sessionId: UUID, msgType: String="SESSION_CREATED") extends ClientResponse
 
   case class SessionAdded(sessionId:UUID, sessionUser: SessionUser) extends Persistable
 
@@ -49,16 +49,17 @@ class SessionManager(playerSupervisor: ActorRef,
   }
 
   override def receiveRecover = {
-    case _ =>
+    case evt: Persistable =>
+      updateState(evt)
   }
 
   override def receiveCommand = {
-    case msg@Register(_, _, _) =>
+    case msg@Register(login:String, _, _, _) =>
       println(msg + " received by session manager ")
-      playerSupervisor forward msg
-    case msg@Login(login: String, _) =>
+      playerSupervisor forward msg.copy(entityId = login)
+    case msg@Login(login: String, _, _) =>
       loginRequests += login -> sender()
-      playerSupervisor ! msg
+      playerSupervisor ! msg.copy(entityId = login)
     case msg@IncorrectPassword(login: String) =>
       loginRequests.get(login).foreach(_ => loginRequests -= login)
     case msg@CorrectPassword(login: String, sign: String) =>
@@ -73,8 +74,16 @@ class SessionManager(playerSupervisor: ActorRef,
           loginRequests -= login
       }
     case SessionMessage(sessionId: UUID, msg: MoveThing) =>
+      val sessionUser:Option[SessionUser] = sessions.get(sessionId)
+      if(sessionUser.isDefined && sessionUser.get.changeObserver != sender()){
+        sessions.put(sessionId, sessionUser.get.copy(changeObserver = sender()))
+      }
       sessions.get(sessionId).foreach(sessionUser => world forward msg.copy(id = sessionUser.login))
     case SessionMessage(sessionId: UUID, msg: GetState) =>
+      val sessionUser:Option[SessionUser] = sessions.get(sessionId)
+      if(sessionUser.isDefined && sessionUser.get.changeObserver != sender()){
+        sessions.put(sessionId, sessionUser.get.copy(changeObserver = sender()))
+      }
       sessions.get(sessionId).foreach(_ => world forward msg)
     case msg: BroadcastMessage =>
       sessions.values.foreach(session => session.changeObserver ! msg)

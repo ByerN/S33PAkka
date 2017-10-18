@@ -3,7 +3,7 @@ name := "S33PAkka"
 version := "0.1"
 
 scalaVersion := "2.12.3"
-
+resolvers += Resolver.jcenterRepo
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-cluster-sharding" % "2.5.6",
   "com.typesafe.akka" %% "akka-persistence" % "2.5.6",
@@ -15,8 +15,12 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http-testkit" % "10.0.10" % Test,
   "com.typesafe.akka" %% "akka-stream" % "2.5.6",
   "com.typesafe.akka" %% "akka-stream-testkit" % "2.5.6" % Test,
-  "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.7.2"
+
 
 )
+libraryDependencies += "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % "2.9.1"
+
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"
 libraryDependencies += "com.github.dnvriend" %% "akka-persistence-inmemory" % "2.5.1.1"
+libraryDependencies += "com.github.dnvriend" %% "akka-persistence-jdbc" % "3.0.0"
+libraryDependencies += "org.postgresql" % "postgresql" % "42.1.4"

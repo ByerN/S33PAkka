@@ -8,6 +8,7 @@ import akka.persistence.journal.leveldb.SharedLeveldbStore
 import akka.testkit._
 import org.byern.s33pakka.config.{ShardMessageConfiguration, SharedStoreUsage}
 import org.byern.s33pakka.player.Player
+import org.byern.s33pakka.session.SessionManager
 import org.byern.s33pakka.world.World
 import org.scalatest._
 
@@ -43,18 +44,18 @@ class SessionManagerTest extends TestKit(ActorSystem("system")) with ImplicitSen
 
   "SessionManager" must {
     "properly init session" in {
-      sessionManager ! Player.Register("a1", "b", "c")
+      sessionManager ! Player.Register("a1", "b", "c", "a1")
       expectMsg(Player.Registered("a1", "c"))
-      sessionManager ! Player.Login("a1", "b")
+      sessionManager ! Player.Login("a1", "b", "a1")
       expectMsgClass(classOf[SessionManager.SessionCreated])
     }
   }
 
   "SessionManager" must {
     "accept messages with started session" in {
-      sessionManager ! Player.Register("a2", "a", "a")
+      sessionManager ! Player.Register("a2", "a", "a", "a2")
       expectMsg(Player.Registered("a2", "a"))
-      sessionManager ! Player.Login("a2", "a")
+      sessionManager ! Player.Login("a2", "a", "a2")
       val sessionId = expectMsgClass(classOf[SessionManager.SessionCreated]).sessionId
       sessionManager ! SessionManager.SessionMessage(sessionId, World.GetState())
       expectMsgClass(classOf[World.State])
@@ -65,9 +66,9 @@ class SessionManagerTest extends TestKit(ActorSystem("system")) with ImplicitSen
 
   "SessionManager" must {
     "not accept messages without session if needed" in {
-      sessionManager ! Player.Register("a3", "a", "a")
+      sessionManager ! Player.Register("a3", "a", "a", "a3")
       expectMsg(Player.Registered("a3", "a"))
-      sessionManager ! Player.Login("a3", "a")
+      sessionManager ! Player.Login("a3", "a", "a3")
       expectMsgClass(classOf[SessionManager.SessionCreated])
       sessionManager ! SessionManager.SessionMessage(UUID.randomUUID(), World.GetState())
       sessionManager ! SessionManager.SessionMessage(UUID.randomUUID(), World.MoveThing("a3", "LEFT"))

@@ -3,12 +3,10 @@ package org.byern.s33pakka.world
 import akka.actor.{ActorLogging, ActorRef, Props}
 import akka.persistence.PersistentActor
 import com.fasterxml.jackson.annotation.JsonProperty
-import org.byern.s33pakka.SessionManager.BroadcastMessage
 import org.byern.s33pakka.core.{Message, Persistable}
 import org.byern.s33pakka.dto.{ClientMessage, ClientResponse}
+import org.byern.s33pakka.session.SessionManager.BroadcastMessage
 import org.byern.s33pakka.world.World.{ThingAdded, _}
-
-import scala.collection.mutable
 
 object World {
 
@@ -23,7 +21,8 @@ object World {
   case class AddThing(creature: Creature, position: Option[Position] = Option.empty) extends WorldMsg
     with ClientMessage
 
-  case class ThingAdded(creaturePos: CreaturePos) extends ClientResponse("THING_ADDED") with BroadcastMessage
+  case class ThingAdded(creaturePos: CreaturePos, msgType: String = "THING_ADDED")
+    extends ClientResponse with BroadcastMessage
 
   case class ThingAddedEvent(creaturePos: CreaturePos) extends Persistable
 
@@ -33,14 +32,14 @@ object World {
 
   case class CantMove(id: String, direction: String)
 
-  case class PositionChanged(id: String, position: Position) extends ClientResponse("POSITION_CHANGED")
+  case class PositionChanged(id: String, position: Position, msgType: String = "POSITION_CHANGED") extends ClientResponse
      with BroadcastMessage
 
   case class PositionChangedEvent(id: String, position: Position) extends Persistable
 
   case class GetState() extends WorldMsg with ClientMessage
 
-  case class State(map: Array[Array[String]], creatures: List[CreaturePos]) extends ClientResponse("STATE")
+  case class State(map: Array[Array[String]], creatures: List[CreaturePos], msgType: String = "STATE") extends ClientResponse
 
   case class RegisterObserver(actor: ActorRef) extends Persistable
 

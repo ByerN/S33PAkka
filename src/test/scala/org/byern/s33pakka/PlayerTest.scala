@@ -33,7 +33,7 @@ class PlayerTest() extends TestKit(ActorSystem("system")) with ImplicitSender
   "Player actor" must {
     "send back Initialized if it's initialized" in {
       val player = system.actorOf(Player.props())
-      player ! Player.Register("a3", "b", "c")
+      player ! Player.Register("a3", "b", "c", "a3")
       expectMsg(Player.Registered("a3", "c"))
     }
 
@@ -42,10 +42,11 @@ class PlayerTest() extends TestKit(ActorSystem("system")) with ImplicitSender
   "Player actor" must {
     "send back Error and stash messages if before initialized" in {
       val player = system.actorOf(Player.props())
-      player ! Login("a4", "b")
+      player ! Login("a4", "b", "a4")
       expectMsg(NotInitialized())
-      player ! Player.Register("a4", "b", "c")
+      player ! Player.Register("a4", "b", "c", "a3")
       expectMsg(Player.Registered("a4", "c"))
+      player ! Login("a4", "b", "a4")
       expectMsg(CorrectPassword("a4", "c"))
     }
   }
@@ -53,9 +54,9 @@ class PlayerTest() extends TestKit(ActorSystem("system")) with ImplicitSender
   "Player actor" must {
     "not pass if password is incorrect" in {
       val player = system.actorOf(Player.props())
-      player ! Player.Register("a5", "b", "c")
+      player ! Player.Register("a5", "b", "c", "a3")
       expectMsg(Player.Registered("a5", "c"))
-      player ! Player.Login("a5", "incorrect password")
+      player ! Player.Login("a5", "incorrect password", "a5")
       expectMsg(IncorrectPassword("a5"))
     }
   }
