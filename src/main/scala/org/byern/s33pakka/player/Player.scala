@@ -2,7 +2,9 @@ package org.byern.s33pakka.player
 
 import akka.actor.{ActorLogging, Props}
 import akka.persistence.PersistentActor
+import com.fasterxml.jackson.annotation.JsonProperty
 import org.byern.s33pakka.core.{Message, Persistable, ShardMessage}
+import org.byern.s33pakka.dto.ClientMessage
 import org.byern.s33pakka.player.Player._
 
 object Player {
@@ -11,13 +13,29 @@ object Player {
 
   trait PlayerMsg extends Message
 
-  case class Register(login: String, password: String, sign: String) extends ShardMessage(PREFIX + "_" + login) with PlayerMsg
+  case class Register(
+                       @JsonProperty("login")
+                       login: String,
+                       @JsonProperty("password")
+                       password: String,
+                       @JsonProperty("sign")
+                       sign: String) extends ShardMessage(PREFIX + "_" + login)
+    with PlayerMsg with ClientMessage
 
   case class Registered(login: String, sign: String)
 
+  case class AlreadyRegistered(login: String)
+
+  case class NotExists(login: String)
+
   case class NotInitialized()
 
-  case class Login(login: String, password: String) extends ShardMessage(PREFIX + "_" + login) with PlayerMsg
+  case class Login(
+                    @JsonProperty("login")
+                    login: String,
+                    @JsonProperty("password")
+                    password: String) extends ShardMessage(PREFIX + "_" + login)
+    with PlayerMsg with ClientMessage
 
   case class IncorrectPassword(login: String)
 
@@ -47,10 +65,10 @@ class Player extends PersistentActor with ActorLogging {
         updateState(event)
       }
       sender() ! Registered(login, sign)
-      unstashAll()
+    case msg@Login =>
+      sender() ! NotExists(login)
     case _ =>
       sender() ! NotInitialized()
-      stash()
   }
 
   def initialized: Receive = {
@@ -59,6 +77,8 @@ class Player extends PersistentActor with ActorLogging {
         sender() ! CorrectPassword(login, sign)
       else
         sender() ! IncorrectPassword(login)
+    case msg@Register =>
+      sender() ! AlreadyRegistered(login)
     case msg@_ =>
       log.info("Unknown message " + msg)
   }

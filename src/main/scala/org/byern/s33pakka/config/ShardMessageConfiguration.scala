@@ -8,15 +8,14 @@ object ShardMessageConfiguration {
   var shardNumber: Int = 10
 
   def extractEntityId: ShardRegion.ExtractEntityId = {
-    case msg:ShardMessage => {
+    case msg:ShardMessage =>
       (msg.entityId, msg)
-    }
   }
 
   def extractShardId: ShardRegion.ExtractShardId = {
     case msg:ShardMessage => (msg.entityId.hashCode % shardNumber).toString
-    case ShardRegion.StartEntity(id) ⇒ {
+    case ShardRegion.StartEntity(id) ⇒
       (id.toLong % shardNumber).toString
-    }
+
   }
 }

@@ -1,0 +1,145 @@
+<html>
+<head>
+    <script src="https://code.jquery.com/jquery-2.2.3.min.js"
+            integrity="sha256-a23g1Nt4dtEYOj7bR+vTu7+T8VP13humZFBJNIYoEJo="
+            crossorigin="anonymous"></script>
+    <title>Chat</title>
+</head>
+<body>
+
+<textarea id="login"></textarea>
+<textarea id="password"></textarea>
+<textarea id="sign"></textarea>
+
+<button id="registerButton">Register</button>
+<button id="loginButton">Login</button>
+
+<button id="moveLeftButton">Left</button>
+<button id="moveRightButton">Right</button>
+<button id="moveUpButton">Up</button>
+<button id="moveDownButton">Down</button>
+<div id="gameMap" style="white-space: pre-wrap;font: normal 10pt 'Courier New';"></div>
+
+<ul id="messages"></ul>
+
+
+<script language="javascript">
+var sessionId = "";
+var map;
+var creatures;
+            var $messages =$("#messages"),
+                $login = $("#login"),
+                $password = $("#password"),
+                $sign = $("#sign"),
+                $gameMap = $("#gameMap"),
+
+                $registerButton = $("#registerButton"),
+                $loginButton = $("#loginButton"),
+
+
+$moveLeftButton = $("#moveLeftButton"),
+$moveRightButton = $("#moveRightButton"),
+$moveUpButton = $("#moveUpButton"),
+$moveDownButton = $("#moveDownButton"),
+
+                connection = new WebSocket('ws://test:1234@localhost:8080/example')
+
+            connection.onopen = function () {
+                $messages.prepend($("<li>Connected</li>"))
+                $registerButton.on('click', function() {
+                    var loginText = $login.val()
+                    var passwordfText = $login.val()
+                    var signText = $login.val()
+                    connection.send(JSON.stringify(
+                        {
+                            "login" : loginText,
+                            "password" : passwordfText,
+                            "sign" : signText,
+                            "type" : "REGISTER"
+                        }
+                        )
+                    )
+                })
+                 $loginButton.on('click', function() {
+                    var loginText = $login.val()
+                    var passwordText = $login.val()
+                    connection.send(JSON.stringify(
+                        {
+                            "login" : loginText,
+                            "password" : passwordText,
+                            "type" : "LOGIN"
+                        }
+                        )
+                    )
+                })
+
+                $moveLeftButton.on('click', function() {move("LEFT")})
+                $moveRightButton.on('click', function() {move("RIGHT")})
+                $moveUpButton.on('click', function() {move("UP")})
+                $moveDownButton.on('click', function() {move("DOWN")})
+            }
+            connection.onerror = function (error) { console.log('WebSocket Error ', error) }
+            connection.onmessage = function (event) {
+                var msg = JSON.parse(event.data)
+                if(msg.msgType === "SESSION_CREATED") {
+                    sessionId = msg.sessionId
+                    getState()
+                } else if(msg.msgType ==="POSITION_CHANGED" || msg.msgType ==="THING_ADDED") {
+                    getState()
+                } else if (msg.msgType === "STATE") {
+                    map = msg.map
+                    creatures = msg.creatures
+
+                    var mapText="";
+                    for(var y = map.length -1 ; y >= 0; y--){
+                        for(var x = 0; x < map[y].length; x++){
+                            var creatureExists = false
+                            for(var n = 0; n < creatures.length; n++){
+                                if(creatures[n].position.x == x && creatures[n].position.y == y){
+                                    mapText+=creatures[n].creature.sign
+                                    creatureExists = true
+                                    break
+                                }
+                                }
+                            if(!creatureExists){
+                                mapText+=map[x][y]
+                            }
+                        }
+                        mapText+="\n"
+                    }
+                    console.log(mapText)
+                    $gameMap.text(mapText)
+                }
+            }
+
+
+            function getState(){
+            connection.send(JSON.stringify(
+                        	{
+                            "type" :"SESSION_MESSAGE",
+                            "sessionId" : sessionId,
+                                "msg": {
+                                "type": "STATE"
+                                }
+                            }
+                        )
+                    )
+            }
+function move(direction) {
+    connection.send(JSON.stringify(
+                        {
+                            "type" :"SESSION_MESSAGE",
+                            "sessionId" : sessionId,
+                                "msg": {
+                                "type": "MOVE",
+                                "direction": direction
+                                }
+                            }
+                        )
+                    )
+                     getState()
+}
+
+</script>
+</body>
+</html>

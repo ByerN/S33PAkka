@@ -5,9 +5,8 @@ import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings}
 import akka.persistence.journal.leveldb.SharedLeveldbStore
 import akka.testkit.{ImplicitSender, TestKit}
 import org.byern.s33pakka.config.{ShardMessageConfiguration, SharedStoreUsage}
+import org.byern.s33pakka.player.Player
 import org.byern.s33pakka.player.Player._
-import org.byern.s33pakka.player.PlayerSupervisor.{AlreadyRegistered, NotExists}
-import org.byern.s33pakka.player.{Player, PlayerSupervisor}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 
 class PlayerTest() extends TestKit(ActorSystem("system")) with ImplicitSender
@@ -29,34 +28,6 @@ class PlayerTest() extends TestKit(ActorSystem("system")) with ImplicitSender
       extractShardId = ShardMessageConfiguration.extractShardId
     )
     playerProxy = ClusterSharding(system).shardRegion("player")
-  }
-
-  "PlayerSupervisor actor" must {
-    "send back not found if player is not registered" in {
-      val playerSupervisor = system.actorOf(PlayerSupervisor.props(playerProxy))
-      playerSupervisor ! Player.Register("a1", "b", "c")
-      expectMsg(Player.Registered("a1", "c"))
-      playerSupervisor ! Player.Register("a1", "b", "c")
-      expectMsg(AlreadyRegistered("a1"))
-    }
-  }
-
-  "PlayerSupervisor actor" must {
-    "not login at not registered account" in {
-      val playerSupervisor = system.actorOf(PlayerSupervisor.props(playerProxy))
-      playerSupervisor ! Login("a2", "b")
-      expectMsg(NotExists("a2"))
-    }
-  }
-
-  "PlayerSupervisor actor" must {
-    "login at registered account" in {
-      val playerSupervisor = system.actorOf(PlayerSupervisor.props(playerProxy))
-      playerSupervisor ! Register("a2", "b", "c")
-      expectMsg(Player.Registered("a2", "c"))
-      playerSupervisor ! Login("a2", "b")
-      expectMsg(CorrectPassword("a2", "c"))
-    }
   }
 
   "Player actor" must {

@@ -47,16 +47,16 @@ class GameLevelTest extends TestKit(ActorSystem("system")) with ImplicitSender
       assert(thing.creaturePos.creature.sign == "a")
       assert(thing.creaturePos.position.x == 10)
       assert(thing.creaturePos.position.y == 10)
-      gameLevel ! World.MoveThing("id1", World.Left())
+      gameLevel ! World.MoveThing("id1", "LEFT")
       expectMsg(World.PositionChanged("id1", World.Position(9, 10)))
 
-      gameLevel ! World.MoveThing("id1", World.Right())
+      gameLevel ! World.MoveThing("id1", "RIGHT")
       expectMsg(World.PositionChanged("id1", World.Position(10, 10)))
 
-      gameLevel ! World.MoveThing("id1", World.Up())
+      gameLevel ! World.MoveThing("id1", "UP")
       expectMsg(World.PositionChanged("id1", World.Position(10, 11)))
 
-      gameLevel ! World.MoveThing("id1", World.Down())
+      gameLevel ! World.MoveThing("id1", "DOWN")
       expectMsg(World.PositionChanged("id1", World.Position(10, 10)))
 
     }
@@ -67,17 +67,17 @@ class GameLevelTest extends TestKit(ActorSystem("system")) with ImplicitSender
       val gameLevel = system.actorOf(World.props())
       gameLevel ! World.AddThing(World.Creature("a", "id1"), Option(World.Position(1, 1)))
       expectMsgClass(classOf[World.ThingAdded])
-      gameLevel ! World.MoveThing("id1", World.Down())
-      expectMsg(World.CantMove("id1", World.Down()))
-      gameLevel ! World.MoveThing("id1", World.Left())
-      expectMsg(World.CantMove("id1", World.Left()))
+      gameLevel ! World.MoveThing("id1", "DOWN")
+      expectMsg(World.CantMove("id1", "DOWN"))
+      gameLevel ! World.MoveThing("id1", "LEFT")
+      expectMsg(World.CantMove("id1", "LEFT"))
 
       gameLevel ! World.AddThing(World.Creature("a", "id2"), Option(World.Position(18, 18)))
       expectMsgClass(classOf[World.ThingAdded])
-      gameLevel ! World.MoveThing("id2", World.Up())
-      expectMsg(World.CantMove("id2", World.Up()))
-      gameLevel ! World.MoveThing("id2", World.Right())
-      expectMsg(World.CantMove("id2", World.Right()))
+      gameLevel ! World.MoveThing("id2", "UP")
+      expectMsg(World.CantMove("id2", "UP"))
+      gameLevel ! World.MoveThing("id2", "RIGHT")
+      expectMsg(World.CantMove("id2", "RIGHT"))
     }
   }
 
@@ -89,10 +89,10 @@ class GameLevelTest extends TestKit(ActorSystem("system")) with ImplicitSender
       gameLevel ! World.AddThing(World.Creature("a", "id2"), Option(World.Position(5, 5)))
       expectMsgClass(classOf[World.ThingAdded])
 
-      gameLevel ! World.MoveThing("id1", World.Down())
-      expectMsg(World.CantMove("id1", World.Down()))
-      gameLevel ! World.MoveThing("id2", World.Up())
-      expectMsg(World.CantMove("id2", World.Up()))
+      gameLevel ! World.MoveThing("id1", "DOWN")
+      expectMsg(World.CantMove("id1", "DOWN"))
+      gameLevel ! World.MoveThing("id2", "UP")
+      expectMsg(World.CantMove("id2", "UP"))
     }
   }
 }
