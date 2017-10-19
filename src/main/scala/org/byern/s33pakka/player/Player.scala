@@ -4,12 +4,10 @@ import akka.actor.{ActorLogging, Props}
 import akka.persistence.PersistentActor
 import com.fasterxml.jackson.annotation.JsonProperty
 import org.byern.s33pakka.core.{Message, Persistable, ShardMessage}
-import org.byern.s33pakka.dto.ClientMessage
-import org.byern.s33pakka.player.Player.{PREFIX, _}
+import org.byern.s33pakka.dto.{ClientMessage, ClientResponse}
+import org.byern.s33pakka.player.Player._
 
 object Player {
-
-  val PREFIX = "player"
 
   trait PlayerMsg extends Message
 
@@ -20,14 +18,20 @@ object Player {
                        password: String,
                        @JsonProperty("sign")
                        sign: String,
-                       entityId:String) extends ShardMessage()
+                       entityId: String) extends ShardMessage()
     with PlayerMsg with ClientMessage
 
-  case class Registered(login: String, sign: String)
+  case class Registered(login: String, sign: String, override val msgType: String = "REGISTERED")
+    extends ClientResponse
 
-  case class AlreadyRegistered(login: String)
+  case class TooLongSign(login: String, sign: String, override val msgType: String = "TOO_LONG_SIGN")
+    extends ClientResponse
 
-  case class NotExists(login: String)
+  case class AlreadyRegistered(login: String, override val msgType: String = "ALREADY_EXISTS")
+    extends ClientResponse
+
+  case class NotExists(login: String, override val msgType: String = "NOT_FOUND")
+    extends ClientResponse
 
   case class NotInitialized()
 
@@ -36,10 +40,11 @@ object Player {
                     login: String,
                     @JsonProperty("password")
                     password: String,
-                    entityId:String) extends ShardMessage
+                    entityId: String) extends ShardMessage
     with PlayerMsg with ClientMessage
 
-  case class IncorrectPassword(login: String)
+  case class IncorrectPassword(login: String, override val msgType: String = "INCORRECT_PASSWORD")
+    extends ClientResponse
 
   case class CorrectPassword(login: String, sign: String)
 
@@ -63,11 +68,15 @@ class Player extends PersistentActor with ActorLogging {
 
   def notInitialized: Receive = {
     case Register(login: String, password: String, sign: String, _) =>
-      persist(InitializedEvent(login, password, sign)) { event =>
-        updateState(event)
+      if (sign.length == 1) {
+        persist(InitializedEvent(login, password, sign)) { event =>
+          updateState(event)
+        }
+        sender() ! Registered(login, sign)
+      } else {
+        sender() ! TooLongSign(login, sign)
       }
-      sender() ! Registered(login, sign)
-    case msg@Login =>
+    case Login(login: String, _, _) =>
       sender() ! NotExists(login)
     case _ =>
       sender() ! NotInitialized()
@@ -79,7 +88,7 @@ class Player extends PersistentActor with ActorLogging {
         sender() ! CorrectPassword(login, sign)
       else
         sender() ! IncorrectPassword(login)
-    case msg@Register =>
+    case msg:Register =>
       sender() ! AlreadyRegistered(login)
     case msg@_ =>
       log.info("Unknown message " + msg)

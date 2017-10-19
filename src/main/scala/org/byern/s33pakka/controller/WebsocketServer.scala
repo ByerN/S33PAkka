@@ -1,12 +1,14 @@
 package org.byern.s33pakka.controller
 
 import akka.NotUsed
-import akka.actor.{Actor, ActorRef, PoisonPill, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ws.{Message, TextMessage}
+import akka.http.scaladsl.server.Directives
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy}
-import org.byern.s33pakka.MainApp.{get, handleWebSocketMessages, mapper, path}
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import org.byern.s33pakka.core
 import org.byern.s33pakka.dto.{ClientMessage, ClientResponse}
 import org.byern.s33pakka.session.ConnectedUser
@@ -15,7 +17,9 @@ object WebsocketServer {
   def props(sessionManager: ActorRef): Props = Props(new WebsocketServer(sessionManager))
 }
 
-class WebsocketServer(sessionManager: ActorRef) extends Actor {
+class WebsocketServer(sessionManager: ActorRef) extends Actor with ActorLogging with Directives {
+  val mapper = new ObjectMapper()
+  mapper.registerModule(DefaultScalaModule)
   implicit val materializer = ActorMaterializer()
   implicit val system = context.system
 
@@ -26,18 +30,12 @@ class WebsocketServer(sessionManager: ActorRef) extends Actor {
       val incomingMessages: Sink[Message, NotUsed] =
         Flow[Message].map {
           case TextMessage.Strict(text) =>
-            println(text)
             try {
-              mapper.readValue(text, classOf[ClientMessage]) match {
-                case message: core.Message =>
-                  println(message)
-                  message
-              }
+              mapper.readValue(text, classOf[ClientMessage])
             }
             catch {
               case e: Exception =>
-                println("Bad message!")
-                println(e)
+                log.debug("Bad Message! ", e)
                 core.Message.Null()
             }
         }.to(Sink.actorRef[core.Message](connectedWsActor, PoisonPill))
@@ -45,19 +43,16 @@ class WebsocketServer(sessionManager: ActorRef) extends Actor {
       val outgoingMessages: Source[Message, NotUsed] =
         Source.actorRef[ClientResponse](10, OverflowStrategy.fail)
           .mapMaterializedValue { outActor =>
-            // give the user actor a way to send messages out
             connectedWsActor ! ConnectedUser.Connected(outActor)
             NotUsed
           }.map(
-          // transform domain message to web socket message
-
           (outMsg: ClientResponse) => {
-            println("outL: " + mapper.writeValueAsString(outMsg))
-            TextMessage(mapper.writeValueAsString(outMsg))
+            val responseStr = mapper.writeValueAsString(outMsg)
+            log.debug("Out message: " + responseStr)
+            TextMessage(responseStr)
           }
         )
 
-      // then combine both to a flow
       Flow.fromSinkAndSource(incomingMessages, outgoingMessages)
     }
 
@@ -71,7 +66,7 @@ class WebsocketServer(sessionManager: ActorRef) extends Actor {
     Http().bindAndHandle(route, "127.0.0.1", 8181)
   }
 
-  override def receive: Receive =  {
+  override def receive: Receive = {
     case core.Message => println("a")
   }
 }

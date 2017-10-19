@@ -1,16 +1,11 @@
 package org.byern.s33pakka
 
-import akka.actor.{ActorSystem, PoisonPill, Props}
+import akka.actor.{ActorSystem, PoisonPill}
 import akka.cluster.sharding.{ClusterSharding, ClusterShardingSettings}
 import akka.cluster.singleton.{ClusterSingletonManager, ClusterSingletonManagerSettings, ClusterSingletonProxy, ClusterSingletonProxySettings}
 import akka.http.scaladsl.server.Directives
-import akka.persistence.journal.leveldb.SharedLeveldbStore
-import akka.stream.ActorMaterializer
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import com.typesafe.config.{ConfigFactory, ConfigValue}
-import org.byern.s33pakka.MainApp.config
-import org.byern.s33pakka.config.{ShardMessageConfiguration, SharedStoreUsage}
+import com.typesafe.config.ConfigFactory
+import org.byern.s33pakka.config.ShardMessageConfiguration
 import org.byern.s33pakka.controller.WebsocketServer
 import org.byern.s33pakka.player.Player
 import org.byern.s33pakka.session.SessionManager
@@ -20,8 +15,6 @@ import scala.io.StdIn
 
 object MainApp extends App with Directives {
 
-  val mapper = new ObjectMapper()
-  mapper.registerModule(DefaultScalaModule)
   var config = ConfigFactory.load()
 
   if (args.length > 0) {

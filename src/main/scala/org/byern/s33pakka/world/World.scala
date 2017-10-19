@@ -28,7 +28,8 @@ object World {
                        @JsonProperty("direction")
                        direction: String) extends WorldMsg with ClientMessage
 
-  case class CantMove(id: String, direction: String)
+  case class CantMove(id: String, direction: String, override val msgType: String = "CANNOT_MOVE")
+    extends ClientResponse
 
   case class PositionChanged(id: String, position: Position, msgType: String = "POSITION_CHANGED") extends ClientResponse
     with BroadcastMessage with Persistable
@@ -126,9 +127,9 @@ class World() extends PersistentActor with ActorLogging {
 
   def updateState(obj: Persistable) = {
     obj match {
-      case event:ThingAdded =>
+      case event: ThingAdded =>
         creatures.put(event.creaturePos.creature.id, event.creaturePos)
-      case event:PositionChanged =>
+      case event: PositionChanged =>
         creatures.get(event.id).foreach(creature =>
           creatures.put(event.id, creature.copy(position = event.position))
         )

@@ -51,7 +51,7 @@ $moveUpButton = $("#moveUpButton"),
 $moveDownButton = $("#moveDownButton")
 
 function start(){
-               var connection = new WebSocket('ws://test:1234@localhost:8181/example')
+               var connection = new WebSocket('ws://localhost:8181/example')
 
             connection.onopen = function () {
                 if(sessionId!= null) {
@@ -61,8 +61,8 @@ function start(){
                 $registerButton.unbind('click');
                 $registerButton.on('click', function() {
                     var loginText = $login.val()
-                    var passwordfText = $login.val()
-                    var signText = $login.val()
+                    var passwordfText = $password.val()
+                    var signText = $sign.val()
                     connection.send(JSON.stringify(
                         {
                             "login" : loginText,
@@ -76,7 +76,7 @@ function start(){
                  $loginButton.unbind('click');
                  $loginButton.on('click', function() {
                     var loginText = $login.val()
-                    var passwordText = $login.val()
+                    var passwordText = $password.val()
                     connection.send(JSON.stringify(
                         {
                             "login" : loginText,
@@ -110,6 +110,9 @@ $(document).keypress(function(e) {
             connection.onerror = function (error) { console.log('WebSocket Error ', error) }
             connection.onmessage = function (event) {
                 var msg = JSON.parse(event.data)
+                if(msg.msgType != undefined){
+                    $messages.prepend($("<li>"+msg.msgType+"</li>"))
+                }
                 if(msg.msgType === "SESSION_CREATED") {
                     sessionId = msg.sessionId
                     getState()
@@ -136,7 +139,6 @@ $(document).keypress(function(e) {
                         }
                         mapText+="\n"
                     }
-                    console.log(mapText)
                     $gameMap.text(mapText)
                 }
             }
@@ -173,7 +175,6 @@ function move(direction) {
                             }
                         )
                     )
-                     getState()
 }
 }
 start()

@@ -7,6 +7,7 @@ import akka.persistence.PersistentActor
 import com.fasterxml.jackson.annotation.JsonProperty
 import org.byern.s33pakka.core.Persistable
 import org.byern.s33pakka.dto.{ClientMessage, ClientResponse}
+import org.byern.s33pakka.player.Player
 import org.byern.s33pakka.player.Player._
 import org.byern.s33pakka.session.SessionManager._
 import org.byern.s33pakka.world.World
@@ -38,13 +39,14 @@ object SessionManager {
 class SessionManager(playerSupervisor: ActorRef,
                      world: ActorRef) extends PersistentActor {
 
-  val sessions: mutable.Map[UUID, SessionUser] = mutable.Map()
+  var sessions: mutable.Map[UUID, SessionUser] = mutable.Map()
   val loginRequests: mutable.Map[String, ActorRef] = mutable.Map()
 
   override def persistenceId = self.path.parent.name + "-" + self.path.name
 
   def updateState(event: Persistable): Unit = event match {
     case SessionAdded(sessionId: UUID, sessionUser : SessionUser) =>
+      sessions.retain((_, value) => value.changeObserver != sessionUser.changeObserver)
       sessions += sessionId -> sessionUser
   }
 
@@ -60,8 +62,12 @@ class SessionManager(playerSupervisor: ActorRef,
     case msg@Login(login: String, _, _) =>
       loginRequests += login -> sender()
       playerSupervisor ! msg.copy(entityId = login)
-    case msg@IncorrectPassword(login: String) =>
-      loginRequests.get(login).foreach(_ => loginRequests -= login)
+    case msg@IncorrectPassword(login: String, _) =>
+      loginRequests.get(login).foreach(loginRequest => loginRequest ! msg)
+      loginRequests.retain((key, _) => key != login)
+    case msg@Player.NotExists(login:String, _) =>
+      loginRequests.get(login).foreach(loginRequest => loginRequest ! msg)
+      loginRequests.retain((key, _) => key != login)
     case msg@CorrectPassword(login: String, sign: String) =>
       loginRequests.get(login).foreach {
         recipient =>
@@ -71,8 +77,8 @@ class SessionManager(playerSupervisor: ActorRef,
           }
           recipient ! SessionCreated(sessionId)
           world ! World.AddThing(Creature(sign, login))
-          loginRequests -= login
       }
+      loginRequests.retain((key, _) => key != login)
     case SessionMessage(sessionId: UUID, msg: MoveThing) =>
       val sessionUser:Option[SessionUser] = sessions.get(sessionId)
       if(sessionUser.isDefined && sessionUser.get.changeObserver != sender()){
