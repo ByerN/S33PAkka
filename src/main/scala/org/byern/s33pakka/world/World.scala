@@ -22,9 +22,7 @@ object World {
     with ClientMessage
 
   case class ThingAdded(creaturePos: CreaturePos, msgType: String = "THING_ADDED")
-    extends ClientResponse with BroadcastMessage
-
-  case class ThingAddedEvent(creaturePos: CreaturePos) extends Persistable
+    extends ClientResponse with BroadcastMessage with Persistable
 
   case class MoveThing(id: String,
                        @JsonProperty("direction")
@@ -33,9 +31,7 @@ object World {
   case class CantMove(id: String, direction: String)
 
   case class PositionChanged(id: String, position: Position, msgType: String = "POSITION_CHANGED") extends ClientResponse
-     with BroadcastMessage
-
-  case class PositionChangedEvent(id: String, position: Position) extends Persistable
+    with BroadcastMessage with Persistable
 
   case class GetState() extends WorldMsg with ClientMessage
 
@@ -52,7 +48,7 @@ class World() extends PersistentActor with ActorLogging {
   private val MAX_HEIGHT = 20
   var map: Array[Array[String]] = Array.ofDim[String](MAX_WIDTH, MAX_HEIGHT)
   var creatures: scala.collection.mutable.Map[String, CreaturePos] = scala.collection.mutable.Map()
-  var changeListener: ActorRef= _
+  var changeListener: ActorRef = _
 
   override def persistenceId = self.path.parent.name + "-" + self.path.name
 
@@ -86,14 +82,14 @@ class World() extends PersistentActor with ActorLogging {
   }
 
   override def receiveCommand = {
-    case msg @ RegisterObserver(actor: ActorRef) =>
+    case msg@RegisterObserver(actor: ActorRef) =>
       persist(msg) {
         event => updateState(event)
       }
     case AddThing(creature, position) =>
       creatures.find(_._1 == creature.id).fold {
         val creaturePos = CreaturePos(creature, position.getOrElse(findPosition()))
-        persist(ThingAddedEvent(creaturePos)) {
+        persist(ThingAdded(creaturePos)) {
           event => updateState(event)
         }
         val thingAdded = ThingAdded(creaturePos)
@@ -113,7 +109,7 @@ class World() extends PersistentActor with ActorLogging {
         }
 
         if (canMove(newPosition)) {
-          persist(PositionChangedEvent(id, newPosition)) {
+          persist(PositionChanged(id, newPosition)) {
             event => updateState(event)
           }
           val positionChanged = PositionChanged(id, newPosition)
@@ -130,9 +126,9 @@ class World() extends PersistentActor with ActorLogging {
 
   def updateState(obj: Persistable) = {
     obj match {
-      case event@ThingAddedEvent(_) =>
+      case event:ThingAdded =>
         creatures.put(event.creaturePos.creature.id, event.creaturePos)
-      case event@PositionChangedEvent(_, _) =>
+      case event:PositionChanged =>
         creatures.get(event.id).foreach(creature =>
           creatures.put(event.id, creature.copy(position = event.position))
         )
